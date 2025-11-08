@@ -37,7 +37,7 @@ Resources:
     Properties:
       StageName: v1
       CorsConfiguration:
-        AllowCredentials: true
+        AllowCredentials: false
         AllowHeaders:
           - Authorization
           - Content-Type
