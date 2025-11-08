@@ -65,28 +65,7 @@ Resources:
       LogGroupName: !Sub "/aws/apigateway/health-platform-${EnvironmentName}"
       RetentionInDays: 30
 
-  ClinicalKey:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: Key for encrypting PHI buckets
-      EnableKeyRotation: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: Enable IAM User Permissions
-            Effect: Allow
-            Principal:
-              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
-            Action: 'kms:*'
-            Resource: '*'
-
-  ClinicalKeyAlias:
-    Type: AWS::KMS::Alias
-    Properties:
-      AliasName: !Sub alias/health-platform-${EnvironmentName}-clinical
-      TargetKeyId: !Ref ClinicalKey
-
-  UsersTable:
+UsersTable:
   Type: AWS::DynamoDB::Table
   Properties:
     BillingMode: PAY_PER_REQUEST
@@ -100,7 +79,7 @@ Resources:
       SSEEnabled: true
     TableName: !Sub health-users-${EnvironmentName}
 
-  AppointmentsTable:
+AppointmentsTable:
   Type: AWS::DynamoDB::Table
   Properties:
     BillingMode: PAY_PER_REQUEST
@@ -137,8 +116,7 @@ Resources:
       SSEEnabled: true
     TableName: !Sub health-appointments-${EnvironmentName}
 
-
-  PatientHealthIndexTable:
+PatientHealthIndexTable:
   Type: AWS::DynamoDB::Table
   Properties:
     BillingMode: PAY_PER_REQUEST
