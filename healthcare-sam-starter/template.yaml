@@ -32,7 +32,7 @@ Resources:
       LogGroupName: !Sub "/aws/http-api/health-platform-${EnvironmentName}"
       RetentionInDays: 30
 
-  ApiGateway:
+   ApiGateway:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: v1
@@ -50,12 +50,15 @@ Resources:
       Auth:
         Authorizers:
           CognitoAuthorizer:
-            AuthorizationScopes:
-              - email
+            # REQUIRED for HttpApi JWT authorizers:
+            IdentitySource: "$request.header.Authorization"
             JwtConfiguration:
               audience:
                 - !Ref CognitoUserPoolClient
               issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPool}"
+            # Optional; keep if you use OAuth scopes in Cognito:
+            AuthorizationScopes:
+              - email
         DefaultAuthorizer: CognitoAuthorizer
 
   ApiAccessLog:
