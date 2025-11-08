@@ -1,0 +1,38 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Minimal Healthcare MVP - REST API + Lambda (registration)
+
+Globals:
+  Function:
+    Timeout: 5
+    MemorySize: 128
+    Runtime: python3.12
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  RegistrationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: registration_handler/
+      Handler: app.lambda_handler
+      Events:
+        RegistrationApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /registration
+            Method: post
+
+Outputs:
+  ApiBaseUrl:
+    Description: Base URL of the REST API stage
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
