@@ -65,6 +65,27 @@ Resources:
       LogGroupName: !Sub "/aws/apigateway/health-platform-${EnvironmentName}"
       RetentionInDays: 30
 
+  ClinicalKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Key for encrypting PHI buckets
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: 'kms:*'
+            Resource: '*'
+
+  ClinicalKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/health-platform-${EnvironmentName}-clinical
+      TargetKeyId: !Ref ClinicalKey
+
   UsersTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -77,6 +98,7 @@ Resources:
           KeyType: HASH
       SSESpecification:
         SSEEnabled: true
+        KMSMasterKeyId: !Ref ClinicalKey
       TableName: !Sub health-users-${EnvironmentName}
 
   AppointmentsTable:
@@ -114,6 +136,7 @@ Resources:
             ProjectionType: ALL
       SSESpecification:
         SSEEnabled: true
+        KMSMasterKeyId: !Ref ClinicalKey
       TableName: !Sub health-appointments-${EnvironmentName}
 
   PatientHealthIndexTable:
@@ -132,6 +155,7 @@ Resources:
           KeyType: RANGE
       SSESpecification:
         SSEEnabled: true
+        KMSMasterKeyId: !Ref ClinicalKey
       TableName: !Sub health-patient-health-index-${EnvironmentName}
 
   ClinicalRawBucket:
@@ -142,7 +166,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - BucketKeyEnabled: true
             ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref ClinicalKey
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -159,7 +184,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - BucketKeyEnabled: true
             ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref ClinicalKey
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -176,7 +202,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - BucketKeyEnabled: true
             ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref ClinicalKey
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
