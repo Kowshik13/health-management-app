@@ -1,10 +1,3 @@
-import {
-  CITY_OPTIONS,
-  LANGUAGE_OPTIONS,
-  SPECIALTIES,
-  generateDoctorSlots,
-} from "./constants.js";
-
 const SESSION_KEY = "healthApp.session";
 let configPromise;
 let cachedConfig;
@@ -97,13 +90,6 @@ export function getSession() {
       localStorage.removeItem(SESSION_KEY);
       return null;
     }
-    if (!session.sub && session.idToken) {
-      const payload = decodeJwt(session.idToken);
-      if (payload?.sub) {
-        session.sub = payload.sub;
-        persistSession(session);
-      }
-    }
     return session;
   } catch (error) {
     console.error("Invalid session", error);
@@ -128,49 +114,6 @@ function buildUserPool(cognito) {
   });
 }
 
-function normaliseOption(value, allowed) {
-  if (!value) return "";
-  return allowed.includes(value) ? value : "";
-}
-
-function normaliseLanguages(values) {
-  const allowed = new Set(LANGUAGE_OPTIONS);
-  return Array.from(new Set(values.filter((item) => allowed.has(item))));
-}
-
-export function buildDoctorProfile(source) {
-  const specialtyValue = typeof source.specialty === "string"
-    ? source.specialty
-    : source.specialty?.value;
-  const cityValue = typeof source.city === "string"
-    ? source.city
-    : source.city?.value;
-  let languages;
-  if (Array.isArray(source.languages)) {
-    languages = source.languages;
-  } else if (source.languages?.selectedOptions) {
-    languages = Array.from(source.languages.selectedOptions).map((option) => option.value);
-  } else if (typeof source.languages === "string") {
-    languages = source.languages.split(",").map((item) => item.trim()).filter(Boolean);
-  } else {
-    languages = [];
-  }
-
-  const specialty = normaliseOption(specialtyValue, SPECIALTIES);
-  const city = normaliseOption(cityValue, CITY_OPTIONS);
-  const normalizedLanguages = normaliseLanguages(languages);
-  const availSlots = Array.isArray(source.availSlots) && source.availSlots.length
-    ? source.availSlots
-    : generateDoctorSlots();
-
-  return {
-    specialty,
-    city,
-    languages: normalizedLanguages,
-    availSlots,
-  };
-}
-
 export async function signUpUser(form) {
   await loadConfig();
   const cognito = await ensureCognitoLibrary();
@@ -181,43 +124,33 @@ export async function signUpUser(form) {
   const firstName = form.firstName.value.trim();
   const lastName = form.lastName.value.trim();
   const role = form.role.value;
+  const specialty = form.specialty?.value.trim();
+  const languages = form.languages?.value.trim();
+  const location = form.location?.value.trim();
 
   const attributeList = [
     new cognito.CognitoUserAttribute({ Name: "given_name", Value: firstName }),
     new cognito.CognitoUserAttribute({ Name: "family_name", Value: lastName }),
     new cognito.CognitoUserAttribute({ Name: "custom:role", Value: role }),
   ];
-
-  let clientMetadata;
-  if (role === "DOCTOR") {
-    const profile = buildDoctorProfile({
-      specialty: form.specialty,
-      city: form.city,
-      languages: form.languages,
-    });
-    clientMetadata = {
-      doctorSpecialty: profile.specialty || "",
-      doctorCity: profile.city || "",
-      doctorLanguages: profile.languages.join(","),
-      doctorSlots: JSON.stringify(profile.availSlots),
-    };
+  if (specialty) {
+    attributeList.push(new cognito.CognitoUserAttribute({ Name: "custom:specialty", Value: specialty }));
+  }
+  if (languages) {
+    attributeList.push(new cognito.CognitoUserAttribute({ Name: "custom:languages", Value: languages }));
+  }
+  if (location) {
+    attributeList.push(new cognito.CognitoUserAttribute({ Name: "custom:location", Value: location }));
   }
 
   return new Promise((resolve, reject) => {
-    pool.signUp(
-      email,
-      password,
-      attributeList,
-      null,
-      (err, result) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(result);
-        }
-      },
-      clientMetadata
-    );
+    pool.signUp(email, password, attributeList, [], (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result);
+      }
+    });
   });
 }
 
@@ -273,12 +206,7 @@ export async function authenticateUser(email, password) {
         const refreshToken = session.getRefreshToken().getToken();
         const payload = decodeJwt(idToken);
         const groups = payload["cognito:groups"] || [];
-        const normalizedGroups = Array.isArray(groups)
-          ? groups
-          : String(groups)
-              .split(",")
-              .map((value) => value.trim())
-              .filter(Boolean);
+        const normalizedGroups = Array.isArray(groups) ? groups : String(groups).split(",").filter(Boolean);
         const expiresAt = payload.exp;
         const stored = {
           email: email.toLowerCase(),
@@ -287,7 +215,6 @@ export async function authenticateUser(email, password) {
           refreshToken,
           groups: normalizedGroups,
           expiresAt,
-          sub: payload.sub,
         };
         persistSession(stored);
         resolve(stored);
@@ -361,10 +288,8 @@ export function requireRole(allowed) {
 
 export function disableWhilePending(button, promise) {
   button.disabled = true;
-  button.setAttribute("aria-busy", "true");
   return promise.finally(() => {
     button.disabled = false;
-    button.removeAttribute("aria-busy");
   });
 }
 
@@ -415,31 +340,3 @@ export function groupLabel(groups) {
 export function getUserEmail() {
   return getSession()?.email || "";
 }
-
-export async function seedDemoData() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("seed") !== "1") {
-    return;
-  }
-  const session = getSession();
-  if (!session) {
-    showToast("Sign in before seeding demo data", "error");
-    return;
-  }
-  try {
-    const response = await fetch("./assets/demo-data/doctors.json", { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`Unable to read demo data (${response.status})`);
-    }
-    const doctors = await response.json();
-    await fetchJSON("/admin/seed/doctors", {
-      method: "POST",
-      body: JSON.stringify({ doctors }),
-    });
-    showToast("Demo doctors seeded", "success");
-  } catch (error) {
-    console.info("Seed helper fallback", error);
-    showToast("Seed endpoint unavailable. Use CLI steps in README to load demo data.", "error");
-  }
-}
-

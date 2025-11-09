@@ -57,8 +57,6 @@ def emit_event(event_type: str, appointment: Dict[str, Any]) -> None:
         "slotISO": appointment.get("slotISO"),
         "status": appointment.get("status"),
         "reason": appointment.get("reason"),
-        "chiefComplaint": appointment.get("chiefComplaint"),
-        "recommendedSpecialty": appointment.get("recommendedSpecialty"),
         "ts": datetime.utcnow().isoformat(),
     }
     events_client.put_events(

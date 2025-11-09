@@ -31,30 +31,31 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/http-api/health-platform-${EnvironmentName}"
       RetentionInDays: 30
-
   ApiGateway:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: v1
       CorsConfiguration:
+        AllowCredentials: false
+        AllowHeaders:
+          - Authorization
+          - Content-Type
         AllowMethods:
           - GET
           - POST
           - OPTIONS
         AllowOrigins:
-          - !Sub "https://health-${EnvironmentName}.${AWS::Region}.cloudfront.net"
-          - "http://localhost:3000"
-        AllowHeaders:
-          - Authorization
-          - Content-Type
+          - "*"
       Auth:
         Authorizers:
           CognitoAuthorizer:
+            # REQUIRED for HttpApi JWT authorizers:
             IdentitySource: "$request.header.Authorization"
             JwtConfiguration:
               audience:
                 - !Ref CognitoUserPoolClient
               issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPool}"
+            # Optional; keep if you use OAuth scopes in Cognito:
             AuthorizationScopes:
               - email
         DefaultAuthorizer: CognitoAuthorizer
