@@ -292,6 +292,15 @@ button:not(:disabled):focus-visible {
   font-weight: 500;
 }
 
+/* utility classes moved from inline styles */
+.lead {
+  font-size: 1.1rem;
+  margin-top: 8px;
+}
+
+.mt-32 { margin-top: 32px; }
+.mt-20 { margin-top: 20px; }
+
 
 .layout-grid {
   display: grid;
