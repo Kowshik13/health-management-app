@@ -7,3 +7,16 @@ __pycache__/
 
 # Editor directories
 .vscode/
+
+# Ignore generated/temporary infra files
+infra/replication.json
+infra/lifecycle.json
+infra/test.txt
+
+# Ignore local deployment artifacts and keys
+deployed_app.js
+cf-list.json
+*.pem
+
+# Ignore user-exported docs
+"Cloud computing final project report.docx"
